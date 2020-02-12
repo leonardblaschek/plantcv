@@ -35,8 +35,8 @@ def main():
 	# Convert RGB to HSV and extract the value channel
 	v = pcv.rgb2gray_hsv(img, "v")
 	# Threshold the value image
-	v_thresh = pcv.threshold.binary(v, 185, 255, "light")
-	v_mblur = pcv.median_blur(v_thresh, 5)
+	v_thresh = pcv.threshold.binary(v, 190, 255, "light")
+	v_mblur = pcv.median_blur(v_thresh, 10)
 	
 	x,y,w,h = cv2.boundingRect(v_mblur)
 	roi_contour, roi_hierarchy = pcv.roi.rectangle(img=img, x=x, y=y, h=h, w=w)
@@ -213,7 +213,7 @@ def main():
 
 			# Watershed plant area to count leaves
 			# The value determines sensitivity, at 5 it detects even cotyledons
-			watershed_header, watershed_data, analysis_images = pcv.watershed_segmentation(img_copy, plant_mask, 10)
+			watershed_header, watershed_data, analysis_images = pcv.watershed_segmentation(img_copy, plant_mask, 15)
 
 			# Save the image with shape characteristics 
 			#img_copy = analysis_images[0]
