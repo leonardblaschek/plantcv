@@ -53,11 +53,6 @@ def main():
     #    "/home/leonard/Dropbox/2020-01_LAC_phenotyping/images/top/renamed/20200128_2.jpg",
     #    mode="rgb")
 
-    # Resize image if made with my phone camera
-    #if img.shape[1] == 5504:
-    #    img = img[0:0 + 3096, 0:0 + 4638]
-    #    ref_img = imutils.resize(ref_img, width=4638)
-
     # Find colour cards
     #df, start, space = pcv.transform.find_color_card(rgb_img=ref_img)
     #ref_mask = pcv.transform.create_color_card_mask(rgb_img=ref_img, radius=10, start_coord=start, spacing=space, ncols=4, nrows=6)
@@ -123,14 +118,14 @@ def main():
     # Threshold the green-magenta, blue, and hue channels
     a_thresh, _ = pcv.threshold.custom_range(img=crop_img,
                                              lower_thresh=[0, 0, 0],
-                                             upper_thresh=[255, 120, 255],
+                                             upper_thresh=[255, 108, 255],
                                              channel='LAB')
     b_thresh, _ = pcv.threshold.custom_range(img=crop_img,
                                              lower_thresh=[0, 0, 135],
                                              upper_thresh=[255, 255, 255],
                                              channel='LAB')
     h_thresh, _ = pcv.threshold.custom_range(img=crop_img,
-                                             lower_thresh=[42, 0, 0],
+                                             lower_thresh=[35, 0, 0],
                                              upper_thresh=[60, 255, 255],
                                              channel='HSV')
 
@@ -176,24 +171,16 @@ def main():
     roi_contour, roi_hierarchy = pcv.roi.rectangle(crop_img, roi_y, roi_x,
                                                    roi_h, roi_w)
 
-    # keep all objects in the bounding box
+    # Keep all objects in the bounding box
     roi_objects, roi_obj_hierarchy, kept_mask, obj_area = pcv.roi_objects(
-        img=crop_img,
-        roi_type='partial',
-        roi_contour=roi_contour,
-        roi_hierarchy=roi_hierarchy,
-        object_contour=id_objects,
-        obj_hierarchy=obj_hierarchy)
+        img = crop_img,
+        roi_type = 'partial',
+        roi_contour = roi_contour,
+        roi_hierarchy = roi_hierarchy,
+        object_contour = id_objects,
+        obj_hierarchy = obj_hierarchy)
 
     # Cluster the objects by plant
-
-    # if/else statement to define trays with less than 3x5 pots
-    #if re.search("3\.jpg$", filename):
-    #    clusters, contours, hierarchies = pcv.cluster_contours(crop_img, roi_objects, roi_obj_hierarchy, 1, 5)
-    #else:
-    #    clusters, contours, hierarchies = pcv.cluster_contours(crop_img, roi_objects, roi_obj_hierarchy, 3, 5)
-
-    # Blanket clustering if all trays are full
     clusters, contours, hierarchies = pcv.cluster_contours(
         crop_img, roi_objects, roi_obj_hierarchy, 3, 5)
 
@@ -204,17 +191,17 @@ def main():
                                                             contours,
                                                             hierarchies,
                                                             out,
-                                                            file=filename)
+                                                            file = filename)
 
     ### Analysis ###
 
     # Approximate the position of the top left plant as grid start
-    coord_y = int(round((crop_img.shape[0] / 3) * 0.5))
-    coord_x = int(round((crop_img.shape[1] / 5) * 0.5))
+    coord_y = int(round(((crop_img.shape[0] / 3) * 0.5) + (crop_img.shape[0] * 0.025)))
+    coord_x = int(round(((crop_img.shape[1] / 5) * 0.5) + (crop_img.shape[1] * 0.025)))
 
     # Set the ROI spacing relative to image dimensions
-    spc_y = int(round(crop_img.shape[0] / 3))
-    spc_x = int(round(crop_img.shape[1] / 5))
+    spc_y = int((round(crop_img.shape[0] - (crop_img.shape[0] * 0.05)) / 3))
+    spc_x = int((round(crop_img.shape[1] - (crop_img.shape[1] * 0.05)) / 5))
 
     # Set the ROI radius relative to image width
     r = int(round(crop_img.shape[1] / 12.5))
@@ -232,34 +219,33 @@ def main():
     for i in range(0, len(imgs)):
         # Find objects within the ROI
         filtered_contours, filtered_hierarchy, filtered_mask, filtered_area = pcv.roi_objects(
-            img=crop_img,
-            roi_type="partial",
-            roi_contour=imgs[i],
-            roi_hierarchy=masks[i],
-            object_contour=id_objects,
-            obj_hierarchy=obj_hierarchy)
+            img = crop_img,
+            roi_type = "partial",
+            roi_contour = imgs[i],
+            roi_hierarchy = masks[i],
+            object_contour = id_objects,
+            obj_hierarchy = obj_hierarchy)
         # Continue only if not empty
         if len(filtered_contours) > 0:
             # Combine objects within each ROI
             plant_contour, plant_mask = pcv.object_composition(
-                img=crop_img,
-                contours=filtered_contours,
-                hierarchy=filtered_hierarchy)
+                img = crop_img,
+                contours = filtered_contours,
+                hierarchy = filtered_hierarchy)
 
             # Analyse the shape of each plant
-            analysis_images = pcv.analyze_object(img=crop_img,
-                                                 obj=plant_contour,
-                                                 mask=plant_mask)
+            analysis_images = pcv.analyze_object(img = crop_img,
+                                                 obj = plant_contour,
+                                                 mask = plant_mask)
 
             # Determine color properties
             color_images = pcv.analyze_color(crop_img, plant_mask, "hsv")
 
             # Watershed plant area to count leaves
-            watershed_images = pcv.watershed_segmentation(
-                crop_img, plant_mask, 15)
+            watershed_images = pcv.watershed_segmentation(crop_img, plant_mask, 15)
 
             # Print out a .json file with the analysis data for the plant
-            pcv.print_results(filename = path + "/" + filename + "_" + str(i) + '.json')
+            pcv.outputs.save_results(filename = path + "/" + filename + "_" + str(i) + '.json')
 
             # Clear the measurements stored globally into the Ouptuts class
             pcv.outputs.clear()
