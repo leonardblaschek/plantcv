@@ -92,10 +92,10 @@ def main():
     end_point = (x_cc + w_cc, y_cc + h_cc)
     colour = (0, 0, 0)
     thickness = -1
-    crop_img = cv2.rectangle(img, start_point, end_point, colour, thickness)
+    card_crop_img = cv2.rectangle(img, start_point, end_point, colour, thickness)
 
     # Convert RGB to HSV and extract the value channel
-    v = pcv.rgb2gray_hsv(crop_img, "v")
+    v = pcv.rgb2gray_hsv(card_crop_img, "v")
 
     # Threshold the value image
     v_thresh = pcv.threshold.binary(v, 150, 255, "light")
