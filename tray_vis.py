@@ -107,7 +107,7 @@ def main():
     x, y, w, h = cv2.boundingRect(v_thresh)
 
     # Crop image to tray
-    crop_img = crop_img[y:y + h, x:x + int(w)]
+    crop_img = card_crop_img[y:y+h, x:x+int(w - (w * 0.03))] # crop extra 3% from right because of tray labels
 
     # Save cropped image for quality control
     pcv.print_image(crop_img,
@@ -118,7 +118,7 @@ def main():
     # Threshold the green-magenta, blue, and hue channels
     a_thresh, _ = pcv.threshold.custom_range(img=crop_img,
                                              lower_thresh=[0, 0, 0],
-                                             upper_thresh=[255, 108, 255],
+                                             upper_thresh=[255, 113, 255],
                                              channel='LAB')
     b_thresh, _ = pcv.threshold.custom_range(img=crop_img,
                                              lower_thresh=[0, 0, 135],
@@ -126,7 +126,7 @@ def main():
                                              channel='LAB')
     h_thresh, _ = pcv.threshold.custom_range(img=crop_img,
                                              lower_thresh=[35, 0, 0],
-                                             upper_thresh=[60, 255, 255],
+                                             upper_thresh=[70, 255, 255],
                                              channel='HSV')
 
     # Join the thresholds (AND)
@@ -134,12 +134,12 @@ def main():
     abh = pcv.logical_and(ab, h_thresh)
 
     # Fill small objects depending on expected plant size based on DPG
-    match = re.search("(\d+).(\d)\.jpg$", filename)
+    match = re.search("(\d+).(\d)\.JPG$", filename)
 
     if int(match.group(1)) < 10:
         abh_clean = pcv.fill(abh, 50)
         print("50")
-    elif int(match.group(1)) < 20:
+    elif int(match.group(1)) < 15:
         abh_clean = pcv.fill(abh, 200)
         print("200")
     else:
@@ -150,7 +150,8 @@ def main():
     abh_dilated = pcv.dilate(abh_clean, 3, 1)
 
     # Close holes
-    abh_fill = pcv.fill_holes(abh_dilated)
+    # abh_fill = pcv.fill_holes(abh_dilated) # silly -- removed
+    abh_fill = abh_dilated
 
     # Apply mask (for VIS images, mask_color=white)
     masked = pcv.apply_mask(crop_img, abh_fill, "white")
