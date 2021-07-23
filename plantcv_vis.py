@@ -27,23 +27,22 @@ def main():
 
     ############### Image read-in ################
 
-    # read image to be analysed
+    # Read target image
     img, path, filename = pcv.readimage(filename = img_file, mode = "rgb")
     
-    ############### Colour correction ################
+    ############### Find scale and crop ################
     
     # find colour card in the image to be analysed
     df, start, space = pcv.transform.find_color_card(rgb_img = img)
-    if int(start[1]) < 1500:
-        img = imutils.rotate_bound(img, -90)
+    #if int(start[0]) < 2000:
+    #        img = imutils.rotate_bound(img, -90)
+    #        rotated = 1
+    #        df, start, space = pcv.transform.find_color_card(rgb_img = img)
+    #else: rotated = 0
+    if img.shape[0] > 6000:
         rotated = 1
-        df, start, space = pcv.transform.find_color_card(rgb_img = img)
-    rotated = 0
+    else: rotated = 0
     img_mask = pcv.transform.create_color_card_mask(rgb_img = img, radius = 10, start_coord = start, spacing = space, ncols = 4, nrows = 6)
-
-    output_directory = "."
-    
-    ############### Fine segmentation ################
     
     # write the spacing of the colour card to file as size marker   
     with open(r'size_marker.csv', 'a') as f:
@@ -63,10 +62,13 @@ def main():
     colour = (0, 0, 0)
     thickness = -1
     crop_img = cv2.rectangle(img, start_point, end_point, colour, thickness)
-
+    
+    ############### Fine segmentation ################
+    
+    # Threshold A and B channels of the LAB colourspace and the Hue channel of the HSV colourspace
     l_thresh, _ = pcv.threshold.custom_range(img=crop_img, lower_thresh=[70,0,0], upper_thresh=[255,255,255], channel='LAB')
-    a_thresh, _ = pcv.threshold.custom_range(img=crop_img, lower_thresh=[0,0,0], upper_thresh=[255,150,255], channel='LAB')
-    b_thresh, _ = pcv.threshold.custom_range(img=crop_img, lower_thresh=[0,0,120], upper_thresh=[255,255,255], channel='LAB')
+    a_thresh, _ = pcv.threshold.custom_range(img=crop_img, lower_thresh=[0,0,0], upper_thresh=[255,145,255], channel='LAB')
+    b_thresh, _ = pcv.threshold.custom_range(img=crop_img, lower_thresh=[0,0,123], upper_thresh=[255,255,255], channel='LAB')
     h_thresh_low, _ = pcv.threshold.custom_range(img=crop_img, lower_thresh=[0,0,0], upper_thresh=[130,255,255], channel='HSV')
     h_thresh_high, _ = pcv.threshold.custom_range(img=crop_img, lower_thresh=[150,0,0], upper_thresh=[255,255,255], channel='HSV')
     h_thresh = pcv.logical_or(h_thresh_low, h_thresh_high)
@@ -77,10 +79,11 @@ def main():
     labh = pcv.logical_and(lab, h_thresh)
 
     # Fill small objects
-    labh_clean = pcv.fill(labh, 50)
+    labh_clean = pcv.fill(labh, 200)
 
     # Dilate to close broken borders
-    labh_dilated = pcv.dilate(labh_clean, 4, 1)
+    #labh_dilated = pcv.dilate(labh_clean, 4, 1)
+    labh_dilated = labh_clean
 
     # Apply mask (for VIS images, mask_color=white)
     masked = pcv.apply_mask(crop_img, labh_dilated, "white")
@@ -88,22 +91,25 @@ def main():
     # Identify objects
     contours, hierarchy = pcv.find_objects(crop_img, labh_dilated)
 
-    # define ROI
     # Define ROI
+
     if rotated == 1:
-        roi_contour, roi_hierarchy= pcv.roi.rectangle(x=1000, y=500, h=4000, w=2000, img=crop_img)
+        roi_height = 3000
+        roi_lwr_bound = y_cc + (h_cc * 0.5) - roi_height
+        roi_contour, roi_hierarchy= pcv.roi.rectangle(x=1000, y=roi_lwr_bound, h=roi_height, w=2000, img=crop_img)
     else:
-        roi_contour, roi_hierarchy= pcv.roi.rectangle(x=2000, y=500, h=3000, w=2000, img=crop_img)
+        roi_height = 1500
+        roi_lwr_bound = y_cc + (h_cc * 0.5) - roi_height
+        roi_contour, roi_hierarchy= pcv.roi.rectangle(x=2000, y=roi_lwr_bound, h=roi_height, w=2000, img=crop_img)
 
-    # decide which objects to keep
+    # Decide which objects to keep
     filtered_contours, filtered_hierarchy, mask, area = pcv.roi_objects(img = crop_img,
-                                                               roi_type = 'partial',
-                                                               roi_contour = roi_contour,
-                                                               roi_hierarchy = roi_hierarchy,
-                                                               object_contour = contours,
-                                                               obj_hierarchy = hierarchy)
-
-    # combine kept objects
+                                                                roi_type = 'partial',
+                                                                roi_contour = roi_contour,
+                                                                roi_hierarchy = roi_hierarchy,
+                                                                object_contour = contours,
+                                                                obj_hierarchy = hierarchy)
+    # Combine kept objects
     obj, mask = pcv.object_composition(crop_img, filtered_contours, filtered_hierarchy)
 
     ############### Analysis ################
@@ -129,7 +135,7 @@ def main():
     pcv.print_image(picture_mask, outfile_white)
 
     # print out results
-    pcv.print_results(args.result)
+    pcv.outputs.save_results(filename=args.result, outformat="json")
 
 if __name__ == '__main__':
     main()
