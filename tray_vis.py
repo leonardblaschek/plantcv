@@ -74,7 +74,7 @@ def main():
     #pcv.transform.quick_color_check(source_matrix = source_matrix, target_matrix = target_matrix, num_chips = 24)
 
     # Write the spacing of the colour card to file as size marker
-    with open(os.path.join(path, 'size_marker_trays.csv'), 'a') as f:
+    with open(os.path.join(path, 'output/size_marker_trays.csv'), 'a') as f:
         writer = csv.writer(f)
         writer.writerow([filename, space[0]])
 
@@ -111,7 +111,7 @@ def main():
 
     # Save cropped image for quality control
     pcv.print_image(crop_img,
-                    filename=path + "/" + "cropped" + filename + ".png")
+                    filename=path + "/output/" + "cropped" + filename + ".png")
 
     ### Threshold plants ###
 
@@ -157,7 +157,7 @@ def main():
     masked = pcv.apply_mask(crop_img, abh_fill, "white")
 
     # Save masked image for quality control
-    pcv.print_image(masked, filename=path + "/" + "masked" + filename + ".png")
+    pcv.print_image(masked, filename=path + "/output/" + "masked" + filename + ".png")
 
     ### Filter and group contours ###
 
@@ -187,12 +187,12 @@ def main():
 
     # Split image into single plants
     out = args.outdir
-    output_path, imgs, masks = pcv.cluster_contour_splitimg(crop_img,
-                                                            clusters,
-                                                            contours,
-                                                            hierarchies,
-                                                            out,
-                                                            file = filename)
+    #output_path, imgs, masks = pcv.cluster_contour_splitimg(crop_img,
+    #                                                        clusters,
+    #                                                        contours,
+    #                                                        hierarchies,
+    #                                                        out,
+    #                                                        file = filename)
 
     ### Analysis ###
 
@@ -205,7 +205,11 @@ def main():
     spc_x = int((round(crop_img.shape[1] - (crop_img.shape[1] * 0.05)) / 5))
 
     # Set the ROI radius relative to image width
-    r = int(round(crop_img.shape[1] / 12.5))
+    if int(match.group(1)) < 16:
+        r = int(round(crop_img.shape[1] / 12.5))
+    else:
+        r = int(round(crop_img.shape[1] / 20))
+    
 
     # Make a grid of ROIs at the expected positions of plants
     # This allows for gaps due to dead/not germinated plants, without messing up the plant numbering
@@ -238,12 +242,14 @@ def main():
             analysis_images = pcv.analyze_object(img = crop_img,
                                                  obj = plant_contour,
                                                  mask = plant_mask)
+            
+            pcv.print_image(analysis_images, filename=path + "/output/" + filename + "_" + str(i) + "_analysed.png")
 
             # Determine color properties
             color_images = pcv.analyze_color(crop_img, plant_mask, "hsv")
 
-            # Watershed plant area to count leaves
-            watershed_images = pcv.watershed_segmentation(crop_img, plant_mask, 15)
+            # Watershed plant area to count leaves (computationally intensive, use when needed)
+            #watershed_images = pcv.watershed_segmentation(crop_img, plant_mask, 15)
 
             # Print out a .json file with the analysis data for the plant
             pcv.outputs.save_results(filename = path + "/" + filename + "_" + str(i) + '.json')
