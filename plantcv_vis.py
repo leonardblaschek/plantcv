@@ -34,14 +34,14 @@ def main():
     
     # find colour card in the image to be analysed
     df, start, space = pcv.transform.find_color_card(rgb_img = img)
-    #if int(start[0]) < 2000:
-    #        img = imutils.rotate_bound(img, -90)
-    #        rotated = 1
-    #        df, start, space = pcv.transform.find_color_card(rgb_img = img)
-    #else: rotated = 0
-    if img.shape[0] > 6000:
-        rotated = 1
+    if int(start[0]) < 2000:
+            img = imutils.rotate_bound(img, -90)
+            rotated = 1
+            df, start, space = pcv.transform.find_color_card(rgb_img = img)
     else: rotated = 0
+    #if img.shape[0] > 6000:
+    #    rotated = 1
+    #else: rotated = 0
     img_mask = pcv.transform.create_color_card_mask(rgb_img = img, radius = 10, start_coord = start, spacing = space, ncols = 4, nrows = 6)
     
     # write the spacing of the colour card to file as size marker   

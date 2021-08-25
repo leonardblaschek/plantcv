@@ -49,6 +49,7 @@ def main():
     # Read image (readimage mode defaults to native but if image is RGBA then specify mode='rgb')
     img, path, filename = pcv.readimage(args.image, mode='rgb')
 
+    # Read reference image for colour correction (currently unused)
     #ref_img, ref_path, ref_filename = pcv.readimage(
     #    "/home/leonard/Dropbox/2020-01_LAC_phenotyping/images/top/renamed/20200128_2.jpg",
     #    mode="rgb")
@@ -67,7 +68,7 @@ def main():
 
     output_directory = "."
 
-    # Correct colour
+    # Correct colour (currently unused)
     #target_matrix, source_matrix, transformation_matrix, corrected_img = pcv.transform.correct_color(ref_img, ref_mask, img, img_mask, output_directory)
 
     # Check that the colour correction worked (source~target should be strictly linear)
@@ -98,16 +99,17 @@ def main():
     v = pcv.rgb2gray_hsv(card_crop_img, "v")
 
     # Threshold the value image
-    v_thresh = pcv.threshold.binary(v, 150, 255, "light")
+    v_thresh = pcv.threshold.binary(v, 100, 255, "light") # start threshold at 150 with bright corner-markers, 100 without
 
-    # Fill out bright imperfections
-    v_thresh = pcv.fill(v_thresh, 500)
+    # Fill out bright imperfections (siliques and other dirt on the background)
+    v_thresh = pcv.fill(v_thresh, 100) # fill at 500 with bright corner-markers, 100 without
 
     # Create bounding rectangle around the tray
     x, y, w, h = cv2.boundingRect(v_thresh)
 
     # Crop image to tray
-    crop_img = card_crop_img[y:y+h, x:x+int(w - (w * 0.03))] # crop extra 3% from right because of tray labels
+    #crop_img = card_crop_img[y:y+h, x:x+int(w - (w * 0.03))] # crop extra 3% from right because of tray labels
+    crop_img = card_crop_img[y:y+h, x:x+w] # crop symmetrically
 
     # Save cropped image for quality control
     pcv.print_image(crop_img,
@@ -118,7 +120,7 @@ def main():
     # Threshold the green-magenta, blue, and hue channels
     a_thresh, _ = pcv.threshold.custom_range(img=crop_img,
                                              lower_thresh=[0, 0, 0],
-                                             upper_thresh=[255, 113, 255],
+                                             upper_thresh=[255, 108, 255],
                                              channel='LAB')
     b_thresh, _ = pcv.threshold.custom_range(img=crop_img,
                                              lower_thresh=[0, 0, 135],
@@ -133,8 +135,8 @@ def main():
     ab = pcv.logical_and(b_thresh, a_thresh)
     abh = pcv.logical_and(ab, h_thresh)
 
-    # Fill small objects depending on expected plant size based on DPG
-    match = re.search("(\d+).(\d)\.JPG$", filename)
+    # Fill small objects depending on expected plant size based on DPG (make sure to take the correct file suffix jpg/JPG/jpeg...)
+    match = re.search("(\d+).(\d)\.jpg$", filename)
 
     if int(match.group(1)) < 10:
         abh_clean = pcv.fill(abh, 50)
