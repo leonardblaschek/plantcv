@@ -1,6 +1,7 @@
 #!/bin/bash
 
-# for an explanation of the arguments, see https://plantcv.readthedocs.io/en/stable/pipeline_parallel/
+# for an explanation of the arguments, see: 
+# https://plantcv.readthedocs.io/en/stable/pipeline_parallel/#legacy-command-line-parameters
 
 /home/leonard/Applications/miniconda3/envs/plantcv/bin/plantcv-workflow.py \
 -d /run/media/leonard/data/PhD/Phenotyping/2020-01_LAC_phenotyping/images/top/renamed/ \
